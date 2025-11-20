@@ -38,6 +38,80 @@ services:
     privileged: true
     restart: unless-stopped
 
+  zookeeper:
+    image: zookeeper:3.9
+    container_name: mephi-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=0.0.0.0:2888:3888;2181
+    networks:
+      - mephi-network
+    restart: unless-stopped
+
+  hbase:
+    image: dajobe/hbase:latest
+    container_name: mephi-hbase
+    hostname: hbase
+    ports:
+      - "16000:16000"  # HBase Master
+      - "16010:16010"  # HBase Master Web UI
+      - "16020:16020"  # HBase RegionServer
+      - "16030:16030"  # HBase RegionServer Web UI
+      - "9090:9090"    # Thrift
+      - "9095:9095"    # REST
+    environment:
+      HBASE_CONF_hbase_rootdir: /hbase-data
+      HBASE_CONF_hbase_zookeeper_quorum: zookeeper
+      HBASE_CONF_hbase_cluster_distributed: "true"
+    depends_on:
+      - zookeeper
+    networks:
+      - mephi-network
+    volumes:
+      - hbase-data:/hbase-data
+      - hbase-logs:/var/log/hbase
+    restart: unless-stopped
+
+  nifi:
+    image: apache/nifi:1.25.0
+    container_name: mephi-nifi
+    hostname: nifi
+    entrypoint: ["/opt/nifi/scripts/start.sh"]
+    ports:
+      - "8443:8443"    # NiFi Web UI (HTTPS)
+    environment:
+      SINGLE_USER_CREDENTIALS_USERNAME: admin
+      SINGLE_USER_CREDENTIALS_PASSWORD: adminadminadmin
+      NIFI_JVM_HEAP_INIT: 2g
+      NIFI_JVM_HEAP_MAX: 4g
+    depends_on:
+      - hbase
+      - nats
+    networks:
+      - mephi-network
+    volumes:
+      - nifi-database:/opt/nifi/nifi-current/database_repository
+      - nifi-flowfile:/opt/nifi/nifi-current/flowfile_repository
+      - nifi-content:/opt/nifi/nifi-current/content_repository
+      - nifi-provenance:/opt/nifi/nifi-current/provenance_repository
+      - nifi-state:/opt/nifi/nifi-current/state
+      - nifi-logs:/opt/nifi/nifi-current/logs
+      - ./scripts:/opt/nifi/custom-scripts:ro
+    restart: unless-stopped
+
 networks:
   mephi-network:
     driver: bridge
+
+volumes:
+  hbase-data:
+  hbase-logs:
+  nifi-conf:
+  nifi-database:
+  nifi-flowfile:
+  nifi-content:
+  nifi-provenance:
+  nifi-state:
+  nifi-logs:
