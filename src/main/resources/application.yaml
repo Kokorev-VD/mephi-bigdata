@@ -3,13 +3,20 @@ spring:
     name: mephi-bigdata
   main:
     web-application-type: none
-    keep-alive: true
 
 metrics:
   enabled: true
-  collection-interval-ms: 5000  
+  collection-interval-ms: 5000
   enabled-metrics:
-    cpu: true      
-    ram: true      
-    disk: true     
-    network: true  
+    cpu: true
+    ram: true
+    disk: true
+    network: true
+
+nats:
+  url: ${NATS_URL:nats://localhost:4222}
+  stream:
+    name: METRICS
+    subjects:
+      - metrics.system.*
+  subject: metrics.system.snapshot  

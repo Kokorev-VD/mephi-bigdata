@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  nats:
+    image: nats:alpine
+    container_name: mephi-nats
+    command: "-js -m 8222"
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - mephi-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "4222"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
   metrics-service:
     build:
       context: .
@@ -8,6 +25,11 @@ services:
     container_name: mephi-bigdata-metrics
     env_file:
       - .env
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - mephi-network
     logging:
       driver: "json-file"
       options:
@@ -15,3 +37,7 @@ services:
         max-file: "3"
     privileged: true
     restart: unless-stopped
+
+networks:
+  mephi-network:
+    driver: bridge
