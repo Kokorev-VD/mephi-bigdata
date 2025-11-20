@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: mephi-bigdata
+  main:
+    web-application-type: none
+    keep-alive: true
+
+metrics:
+  enabled: true
+  collection-interval-ms: 5000  
+  enabled-metrics:
+    cpu: true      
+    ram: true      
+    disk: true     
+    network: true  

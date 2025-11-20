@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  metrics-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mephi-bigdata-metrics
+    env_file:
+      - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    privileged: true
+    restart: unless-stopped
