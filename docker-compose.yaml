@@ -101,6 +101,22 @@ services:
       - ./scripts:/opt/nifi/custom-scripts:ro
     restart: unless-stopped
 
+  spark:
+    image: apache/spark:3.5.0
+    container_name: mephi-spark
+    user: root
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./spark-app/build/libs:/opt/spark-apps
+    networks:
+      - mephi-network
+    depends_on:
+      - hbase
+    restart: unless-stopped
+
 networks:
   mephi-network:
     driver: bridge

@@ -45,3 +45,30 @@ docker exec mephi-nats nats stream info METRICS
 docker exec -it mephi-hbase hbase shell
 scan 'system_metrics', {LIMIT => 10}
 ```
+
+## Lab 4: Apache Spark - Анализ трафика
+
+**Цель:** Подсчитать AVG(bytesReceived/bytesSent) с интервалом 10 минут.
+
+**Запуск:**
+
+```bash
+# 1. Создать таблицу результатов
+./scripts/create-result-table.sh
+
+# 2. Собрать и запустить
+cd spark-app
+./gradlew shadowJar
+docker exec mephi-spark sh -c "/opt/spark/bin/spark-submit --class NetworkTrafficAnalyzer --master local[*] /opt/spark-apps/network-analyzer.jar"
+
+# 3. Проверить результаты
+docker exec -i mephi-hbase hbase shell
+> scan 'network_traffic_analysis', {LIMIT => 5}
+```
+
+**Структура:**
+- `spark-app/` - standalone Kotlin приложение
+- `NetworkTrafficAnalyzer.kt` - весь код в одном файле (204 строки)
+
+**UI:**
+- Spark Web UI: http://localhost:8080
