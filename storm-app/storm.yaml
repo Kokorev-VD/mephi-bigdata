@@ -1,0 +1,4 @@
+nimbus.seeds: ["mephi-storm-nimbus"]
+storm.zookeeper.servers:
+  - "mephi-zookeeper"
+storm.zookeeper.port: 2181

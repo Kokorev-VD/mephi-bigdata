@@ -117,6 +117,130 @@ services:
       - hbase
     restart: unless-stopped
 
+  storm-nimbus:
+    image: storm:2.6.0
+    container_name: mephi-storm-nimbus
+    hostname: mephi-storm-nimbus
+    command: storm nimbus
+    ports:
+      - "6627:6627"
+    environment:
+      STORM_ZOOKEEPER_SERVERS: mephi-zookeeper
+      STORM_ZOOKEEPER_PORT: "2181"
+      STORM_LOCAL_HOSTNAME: mephi-storm-nimbus
+    depends_on:
+      - zookeeper
+    networks:
+      - mephi-network
+    volumes:
+      - ./storm-app/build/libs:/storm-jars:ro
+      - ./storm-app/storm.yaml:/conf/storm.yaml
+      - storm-nimbus-data:/var/lib/storm
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  storm-supervisor:
+    image: storm:2.6.0
+    container_name: mephi-storm-supervisor
+    command: storm supervisor
+    ports:
+      - "6700:6700"
+      - "6701:6701"
+      - "6702:6702"
+      - "6703:6703"
+    environment:
+      STORM_ZOOKEEPER_SERVERS: mephi-zookeeper
+      STORM_ZOOKEEPER_PORT: "2181"
+    depends_on:
+      - zookeeper
+      - storm-nimbus
+    networks:
+      - mephi-network
+    volumes:
+      - ./storm-app/build/libs:/storm-jars:ro
+      - ./storm-app/storm.yaml:/conf/storm.yaml
+      - storm-supervisor-data:/var/lib/storm
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  storm-ui:
+    image: storm:2.6.0
+    container_name: mephi-storm-ui
+    command: storm ui
+    ports:
+      - "8081:8081"
+    environment:
+      STORM_ZOOKEEPER_SERVERS: mephi-zookeeper
+      STORM_ZOOKEEPER_PORT: "2181"
+    depends_on:
+      - zookeeper
+      - storm-nimbus
+    networks:
+      - mephi-network
+    volumes:
+      - ./storm-app/storm.yaml:/conf/storm.yaml
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  spark-app:
+    image: apache/spark:3.5.0
+    container_name: mephi-spark-app
+    user: root
+    command: >
+      sh -c "while true; do
+        echo 'Starting Spark job...';
+        /opt/spark/bin/spark-submit
+        --class NetworkTrafficAnalyzer
+        --master local[*]
+        /opt/spark-apps/spark-app.jar;
+        echo 'Spark job completed. Sleeping 60 seconds...';
+        sleep 60;
+      done"
+    volumes:
+      - ./spark-app/build/libs:/opt/spark-apps
+    networks:
+      - mephi-network
+    depends_on:
+      - hbase
+      - spark
+    restart: unless-stopped
+
+  storm-app:
+    image: storm:2.6.0
+    container_name: mephi-storm-app
+    command: >
+      sh -c "echo 'Waiting 20 seconds for nimbus to start...';
+      sleep 20;
+      echo 'Submitting topology...';
+      storm jar /storm-jars/storm-app.jar SpikeDetectorTopology ||
+      (echo 'Failed to submit topology' && tail -f /dev/null)"
+    environment:
+      STORM_ZOOKEEPER_SERVERS: mephi-zookeeper
+      STORM_ZOOKEEPER_PORT: "2181"
+      STORM_LOCAL_HOSTNAME: mephi-storm-app
+    depends_on:
+      - storm-nimbus
+      - storm-supervisor
+      - nats
+    networks:
+      - mephi-network
+    volumes:
+      - ./storm-app/build/libs:/storm-jars:ro
+      - ./storm-app/storm.yaml:/conf/storm.yaml
+    restart: on-failure
+
 networks:
   mephi-network:
     driver: bridge
@@ -131,3 +255,5 @@ volumes:
   nifi-provenance:
   nifi-state:
   nifi-logs:
+  storm-nimbus-data:
+  storm-supervisor-data:

@@ -34,9 +34,3 @@ spark-submit \
   --class NetworkTrafficAnalyzer \
   build/libs/network-analyzer.jar
 ```
-
-## TODO
-
-- Реализовать логику анализа сетевого трафика
-- Добавить интеграцию с HBase
-- Реализовать unit тесты
